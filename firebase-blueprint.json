@@ -1,0 +1,46 @@
+{
+  "entities": {
+    "Endpoint": {
+      "title": "Webhook Endpoint",
+      "description": "Configuration for a custom webhook URL.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID for the endpoint." },
+        "userId": { "type": "string", "description": "ID of the user who created it." },
+        "name": { "type": "string", "description": "Optional name for the endpoint." },
+        "responseStatus": { "type": "integer", "description": "HTTP status code to return." },
+        "responseBody": { "type": "string", "description": "Custom response body." },
+        "responseHeaders": { "type": "object", "description": "Custom response headers." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." },
+        "expiresAt": { "type": "string", "format": "date-time", "description": "Expiration timestamp (24h later)." }
+      },
+      "required": ["id", "userId", "responseStatus", "createdAt", "expiresAt"]
+    },
+    "CapturedRequest": {
+      "title": "Captured Request",
+      "description": "A request captured by a webhook endpoint.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID for the request." },
+        "endpointId": { "type": "string", "description": "ID of the endpoint that captured it." },
+        "method": { "type": "string", "description": "HTTP method (GET, POST, etc.)." },
+        "headers": { "type": "object", "description": "Request headers." },
+        "body": { "type": "string", "description": "Request body." },
+        "query": { "type": "object", "description": "Query parameters." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Capture timestamp." },
+        "ip": { "type": "string", "description": "Sender IP address." }
+      },
+      "required": ["id", "endpointId", "method", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/endpoints/{endpointId}": {
+      "schema": "Endpoint",
+      "description": "Collection of webhook endpoints."
+    },
+    "/endpoints/{endpointId}/requests/{requestId}": {
+      "schema": "CapturedRequest",
+      "description": "Sub-collection of requests captured by an endpoint."
+    }
+  }
+}

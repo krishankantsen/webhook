@@ -1,0 +1,5 @@
+{
+  "name": "Custom Webhook Tester",
+  "description": "Generate unique URLs valid for 24 hours to capture and customize webhook requests with real-time updates.",
+  "requestFramePermissions": []
+}
