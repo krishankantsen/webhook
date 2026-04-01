@@ -1,8 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, query, where, onSnapshot, orderBy, doc, setDoc, deleteDoc, updateDoc, serverTimestamp, Timestamp, addDoc, limit } from 'firebase/firestore';
-import { auth, db, signIn, signOut, handleFirestoreError, OperationType } from './firebase';
-import { Endpoint, CapturedRequest } from './types';
 import { 
   Plus, 
   Trash2, 
@@ -25,12 +21,13 @@ import {
   Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, parseISO } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
+import { Endpoint, CapturedRequest } from './types';
 
 // --- Components ---
 
-const Navbar = ({ user }: { user: User | null }) => (
+const Navbar = () => (
   <nav className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100 sticky top-0 z-50">
     <div className="flex items-center gap-2">
       <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
@@ -38,43 +35,28 @@ const Navbar = ({ user }: { user: User | null }) => (
       </div>
       <span className="text-xl font-bold tracking-tight text-gray-900">HookCapture</span>
     </div>
-    {user ? (
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100">
-          <img src={user.photoURL || ''} alt="" className="w-6 h-6 rounded-full" />
-          <span className="text-sm font-medium text-gray-700">{user.displayName}</span>
-        </div>
-        <button 
-          onClick={signOut}
-          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-          title="Sign Out"
-        >
-          <LogOut size={20} />
-        </button>
-      </div>
-    ) : (
-      <button 
-        onClick={signIn}
-        className="px-5 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
-      >
-        Sign In with Google
-      </button>
-    )}
+    <div className="hidden md:flex items-center gap-4">
+      <span className="text-sm font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
+        Local Storage Mode
+      </span>
+    </div>
   </nav>
 );
 
 const EndpointCard = ({ 
+  key,
   endpoint, 
   isSelected, 
   onClick, 
   onDelete 
 }: { 
+  key:string
   endpoint: Endpoint; 
   isSelected: boolean; 
   onClick: () => void;
   onDelete: (e: React.MouseEvent) => void;
 }) => {
-  const isExpired = endpoint.expiresAt.toDate() < new Date();
+  const isExpired = parseISO(endpoint.expiresAt) < new Date();
   
   return (
     <motion.div
@@ -111,7 +93,7 @@ const EndpointCard = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-gray-400">
           <Clock size={12} />
-          {isExpired ? 'Expired' : `Expires ${formatDistanceToNow(endpoint.expiresAt.toDate(), { addSuffix: true })}`}
+          {isExpired ? 'Expired' : `Expires ${formatDistanceToNow(parseISO(endpoint.expiresAt), { addSuffix: true })}`}
         </div>
         <div className="px-2 py-0.5 bg-gray-100 rounded text-[10px] font-bold text-gray-600">
           {endpoint.responseStatus}
@@ -121,7 +103,7 @@ const EndpointCard = ({
   );
 };
 
-const RequestItem = ({ request }: { request: CapturedRequest }) => {
+const RequestItem = ({ key, request }: { key:string, request: CapturedRequest }) => {
   const [isOpen, setIsOpen] = useState(false);
   
   return (
@@ -142,7 +124,7 @@ const RequestItem = ({ request }: { request: CapturedRequest }) => {
           <div className="flex flex-col">
             <span className="text-sm font-medium text-gray-900">{request.ip}</span>
             <span className="text-xs text-gray-500">
-              {formatDistanceToNow(request.timestamp.toDate(), { addSuffix: true })}
+              {formatDistanceToNow(parseISO(request.timestamp), { addSuffix: true })}
             </span>
           </div>
         </div>
@@ -226,8 +208,9 @@ const EditResponsePanel = ({
 
   const handleSave = async () => {
     setError('');
+    let parsedHeaders = {};
     try {
-      JSON.parse(headers); // validate JSON
+      parsedHeaders = JSON.parse(headers); // validate JSON
     } catch {
       setError('Response Headers must be valid JSON.');
       return;
@@ -364,7 +347,6 @@ const EditResponsePanel = ({
 };
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(null);
   const [requests, setRequests] = useState<CapturedRequest[]>([]);
@@ -381,115 +363,110 @@ export default function App() {
     headers: '{"Content-Type": "application/json"}'
   });
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
+  const fetchEndpoints = async () => {
+    try {
+      const res = await fetch('/api/endpoints');
+      const data = await res.json();
+      setEndpoints(data);
+      if (selectedEndpoint) {
+        const updated = data.find((ep: Endpoint) => ep.id === selectedEndpoint.id);
+        if (updated) setSelectedEndpoint(updated);
+      }
+    } catch (err) {
+      console.error('Failed to fetch endpoints:', err);
+    } finally {
       setLoading(false);
-    });
-    return unsubscribe;
+    }
+  };
+
+  const fetchRequests = async (endpointId: string) => {
+    try {
+      const res = await fetch(`/api/endpoints/${endpointId}/requests`);
+      const data = await res.json();
+      setRequests(data);
+    } catch (err) {
+      console.error('Failed to fetch requests:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchEndpoints();
+    const interval = setInterval(fetchEndpoints, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    if (!user) {
-      setEndpoints([]);
-      return;
-    }
-
-    const q = query(
-      collection(db, 'endpoints'),
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Endpoint));
-      setEndpoints(data);
-      // Keep selectedEndpoint in sync with latest data
-      setSelectedEndpoint(prev => {
-        if (!prev) return prev;
-        const updated = data.find(ep => ep.id === prev.id);
-        return updated || prev;
-      });
-    }, (err) => handleFirestoreError(err, OperationType.LIST, 'endpoints'));
-
-    return unsubscribe;
-  }, [user]);
-
-  useEffect(() => {
-    if (!selectedEndpoint) {
+    if (selectedEndpoint) {
+      fetchRequests(selectedEndpoint.id);
+      const interval = setInterval(() => fetchRequests(selectedEndpoint.id), 3000);
+      return () => clearInterval(interval);
+    } else {
       setRequests([]);
-      return;
     }
-
-    const q = query(
-      collection(db, 'endpoints', selectedEndpoint.id, 'requests'),
-      orderBy('timestamp', 'desc'),
-      limit(50)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as CapturedRequest));
-      setRequests(data);
-    }, (err) => handleFirestoreError(err, OperationType.LIST, `endpoints/${selectedEndpoint.id}/requests`));
-
-    return unsubscribe;
   }, [selectedEndpoint?.id]);
 
   const handleCreateEndpoint = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
-
     try {
-      const id = uuidv4().split('-')[0]; // Short ID
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24);
-
       let parsedHeaders = {};
-      try { parsedHeaders = JSON.parse(formData.headers); } catch(e) { /* ignore */ }
+      try { parsedHeaders = JSON.parse(formData.headers); } catch(e) {}
 
-      const newEndpoint: Endpoint = {
-        id,
-        userId: user.uid,
-        name: formData.name,
-        responseStatus: formData.status,
-        responseBody: formData.body,
-        responseHeaders: parsedHeaders,
-        createdAt: Timestamp.now(),
-        expiresAt: Timestamp.fromDate(expiresAt)
-      };
+      const res = await fetch('/api/endpoints', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          status: formData.status,
+          body: formData.body,
+          headers: parsedHeaders
+        }),
+      });
 
-      await setDoc(doc(db, 'endpoints', id), newEndpoint);
+      const newEndpoint = await res.json();
+      setEndpoints([newEndpoint, ...endpoints]);
       setIsCreating(false);
       setSelectedEndpoint(newEndpoint);
       setFormData({ name: '', status: 200, body: '{"message": "Webhook received successfully"}', headers: '{"Content-Type": "application/json"}' });
     } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'endpoints');
+      console.error('Failed to create endpoint:', err);
     }
   };
 
   const handleUpdateResponse = async (status: number, body: string, headersJson: string) => {
     if (!selectedEndpoint) return;
-    let parsedHeaders = {};
-    try { parsedHeaders = JSON.parse(headersJson); } catch { /* already validated */ }
+    try {
+      let parsedHeaders = {};
+      try { parsedHeaders = JSON.parse(headersJson); } catch {}
 
-    await updateDoc(doc(db, 'endpoints', selectedEndpoint.id), {
-      responseStatus: status,
-      responseBody: body,
-      responseHeaders: parsedHeaders,
-    });
-    // selectedEndpoint will auto-update via the onSnapshot listener
+      const res = await fetch(`/api/endpoints/${selectedEndpoint.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status,
+          body,
+          headers: parsedHeaders,
+        }),
+      });
+
+      const updated = await res.json();
+      setEndpoints(endpoints.map(ep => ep.id === updated.id ? updated : ep));
+      setSelectedEndpoint(updated);
+    } catch (err) {
+      console.error('Failed to update response:', err);
+    }
   };
 
   const handleDeleteEndpoint = async (id: string) => {
     if (!confirm('Are you sure you want to delete this endpoint? All captured requests will be lost.')) return;
     try {
-      await deleteDoc(doc(db, 'endpoints', id));
+      await fetch(`/api/endpoints/${id}`, { method: 'DELETE' });
+      setEndpoints(endpoints.filter(ep => ep.id !== id));
       if (selectedEndpoint?.id === id) {
         setSelectedEndpoint(null);
         setIsEditingResponse(false);
       }
     } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, `endpoints/${id}`);
+      console.error('Failed to delete endpoint:', err);
     }
   };
 
@@ -511,53 +488,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
-      <Navbar user={user} />
+      <Navbar />
 
-      {!user ? (
-        <main className="max-w-4xl mx-auto px-6 py-20 text-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="space-y-8"
-          >
-            <div className="inline-flex p-4 bg-indigo-50 rounded-3xl mb-4">
-              <Webhook size={64} className="text-indigo-600" />
-            </div>
-            <h1 className="text-6xl font-black tracking-tight leading-tight">
-              Capture &amp; Customize <br />
-              <span className="text-indigo-600">Webhooks Instantly</span>
-            </h1>
-            <p className="text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed">
-              Generate unique URLs valid for 24 hours. Capture requests, inspect payloads, 
-              and customize responses with zero configuration.
-            </p>
-            <div className="flex items-center justify-center gap-4">
-              <button 
-                onClick={signIn}
-                className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 flex items-center gap-2"
-              >
-                Get Started for Free
-                <ChevronRight size={20} />
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-3 gap-8 mt-20">
-              {[
-                { icon: Globe, title: 'Public URLs', desc: 'Instant unique endpoints' },
-                { icon: Settings, title: 'Custom Responses', desc: 'Tweak status, body & headers anytime' },
-                { icon: RefreshCw, title: 'Real-time', desc: 'Live request inspection' }
-              ].map((feature, i) => (
-                <div key={i} className="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm">
-                  <feature.icon className="text-indigo-600 mb-4" size={24} />
-                  <h3 className="font-bold mb-1">{feature.title}</h3>
-                  <p className="text-sm text-gray-500">{feature.desc}</p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        </main>
-      ) : (
-        <main className="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-80px)]">
+      <main className="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-80px)]">
           {/* Sidebar: Endpoints List */}
           <div className="lg:col-span-3 flex flex-col gap-4 overflow-hidden">
             <div className="flex items-center justify-between mb-2">
@@ -659,7 +592,7 @@ export default function App() {
                       Create Endpoint
                     </button>
                     <button 
-                      type="button"
+                      type="button" 
                       onClick={() => setIsCreating(false)}
                       className="px-8 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-all"
                     >
@@ -680,7 +613,7 @@ export default function App() {
                         <span>•</span>
                         <span className="flex items-center gap-1">
                           <Clock size={14} />
-                          Expires {formatDistanceToNow(selectedEndpoint.expiresAt.toDate(), { addSuffix: true })}
+                          Expires {formatDistanceToNow(parseISO(selectedEndpoint.expiresAt), { addSuffix: true })}
                         </span>
                       </div>
                     </div>
@@ -760,13 +693,13 @@ export default function App() {
                         </div>
                         <h4 className="text-lg font-bold text-gray-900 mb-2">Waiting for requests</h4>
                         <p className="text-sm text-gray-500 max-w-xs">
-                          Send a request to your unique URL to see it appear here in real-time.
+                          Send a request up to your unique URL to see it appear here in real-time.
                         </p>
                         <div className="mt-8 p-4 bg-indigo-50 rounded-2xl border border-indigo-100 text-left">
                           <p className="text-xs font-bold text-indigo-700 mb-2 uppercase tracking-widest flex items-center gap-2 justify-between">
                             <span>Try it now:</span>
                             <button
-                              type="button"
+                              type="button" 
                               onClick={() => copyToClipboard(`curl -X POST ${webhookUrl} -d '{"hello": "world"}'`)}
                               className="px-2 py-1 text-[10px] bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
                             >
@@ -807,7 +740,6 @@ export default function App() {
             )}
           </div>
         </main>
-      )}
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {

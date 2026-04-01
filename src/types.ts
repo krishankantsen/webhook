@@ -1,4 +1,3 @@
-import { Timestamp } from 'firebase/firestore';
 
 export interface Endpoint {
   id: string;
@@ -7,8 +6,8 @@ export interface Endpoint {
   responseStatus: number;
   responseBody: string;
   responseHeaders: Record<string, string>;
-  createdAt: Timestamp;
-  expiresAt: Timestamp;
+  createdAt: string; // ISO String
+  expiresAt: string; // ISO String
 }
 
 export interface CapturedRequest {
@@ -18,6 +17,6 @@ export interface CapturedRequest {
   headers: Record<string, string>;
   body: string;
   query: Record<string, any>;
-  timestamp: Timestamp;
+  timestamp: string; // ISO String
   ip: string;
 }
