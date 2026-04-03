@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { getSql } from '@/lib/db';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const sql = getSql();
-    const rows = await sql`SELECT * FROM endpoints ORDER BY createdat DESC`;
+    const userId = request.headers.get('x-user-id') || 'anonymous';
+    const rows = await sql`SELECT * FROM endpoints WHERE owner = ${userId} ORDER BY createdat DESC`;
     const endpoints = rows.map((row: any) => ({
       ...row,
       responseHeaders: JSON.parse(row.responseheaders || '{}')
@@ -20,6 +21,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const sql = getSql();
+    const userId = request.headers.get('x-user-id') || 'anonymous';
     const { name, status, body, headers } = await request.json();
 
     const id = uuidv4().split('-')[0];
@@ -33,7 +35,8 @@ export async function POST(request: NextRequest) {
       responseBody: body || 'OK',
       responseHeaders: JSON.stringify(headers || {}),
       createdAt: new Date().toISOString(),
-      expiresAt: expiresAt.toISOString()
+      expiresAt: expiresAt.toISOString(),
+      owner: userId
     };
 
     await sql`INSERT INTO endpoints (id, name, responsestatus, responsebody, responseheaders, createdat, expiresat) VALUES (${newEndpoint.id}, ${newEndpoint.name}, ${newEndpoint.responseStatus}, ${newEndpoint.responseBody}, ${newEndpoint.responseHeaders}, ${newEndpoint.createdAt}, ${newEndpoint.expiresAt})`;

@@ -24,9 +24,17 @@ export async function initDatabase() {
       responsebody TEXT,
       responseheaders TEXT,
       createdat TEXT,
-      expiresat TEXT
+      expiresat TEXT,
+      owner TEXT
     );
   `);
+
+  // Add owner column for existing tables if missing
+  try {
+    await db(`ALTER TABLE endpoints ADD COLUMN owner TEXT;`);
+  } catch (e) {
+    // ignore if column already exists
+  }
 
   await db(`
     CREATE TABLE IF NOT EXISTS requests (

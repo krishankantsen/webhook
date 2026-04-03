@@ -8,6 +8,7 @@ export async function PATCH(
   try {
     const sql = getSql();
     const { id } = params;
+    const userId = request.headers.get('x-user-id') || 'anonymous';
 
     const rows = await sql`SELECT * FROM endpoints WHERE id = ${id}`;
     if (rows.length === 0) {
@@ -15,6 +16,10 @@ export async function PATCH(
     }
 
     const endpoint = rows[0];
+    if (endpoint.owner !== userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { status, body, headers } = await request.json();
 
     if (status !== undefined) endpoint.responsestatus = status;
@@ -40,6 +45,15 @@ export async function DELETE(
   try {
     const sql = getSql();
     const { id } = params;
+    const userId = request.headers.get('x-user-id') || 'anonymous';
+
+    const rows = await sql`SELECT owner FROM endpoints WHERE id = ${id}`;
+    if (rows.length === 0) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    if (rows[0].owner !== userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     await sql`DELETE FROM endpoints WHERE id = ${id}`;
     await sql`DELETE FROM requests WHERE endpointid = ${id}`;

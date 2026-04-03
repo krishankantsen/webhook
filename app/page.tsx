@@ -364,6 +364,7 @@ const EditResponsePanel = ({
 };
 
 export default function Home() {
+  const [userId, setUserId] = useState<string>('');
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(null);
   const [requests, setRequests] = useState<CapturedRequest[]>([]);
@@ -371,6 +372,15 @@ export default function Home() {
   const [isEditingResponse, setIsEditingResponse] = useState(false);
   const [loading, setLoading] = useState(true);
   const [copying, setCopying] = useState(false);
+
+  useEffect(() => {
+    let storedUserId = localStorage.getItem('hookcapture-user-id');
+    if (!storedUserId) {
+      storedUserId = uuidv4();
+      localStorage.setItem('hookcapture-user-id', storedUserId);
+    }
+    setUserId(storedUserId);
+  }, []);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -381,8 +391,12 @@ export default function Home() {
   });
 
   const fetchEndpoints = async () => {
+    if (!userId) return;
+
     try {
-      const res = await fetch('/api/endpoints');
+      const res = await fetch('/api/endpoints', {
+        headers: { 'x-user-id': userId }
+      });
       const data = await res.json();
       setEndpoints(data);
       if (selectedEndpoint) {
@@ -407,10 +421,12 @@ export default function Home() {
   };
 
   useEffect(() => {
+    if (!userId) return;
+
     fetchEndpoints();
     const interval = setInterval(fetchEndpoints, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     if (selectedEndpoint) {
@@ -430,7 +446,7 @@ export default function Home() {
 
       const res = await fetch('/api/endpoints', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
         body: JSON.stringify({
           name: formData.name,
           status: formData.status,
@@ -457,7 +473,7 @@ export default function Home() {
 
       const res = await fetch(`/api/endpoints/${selectedEndpoint.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
         body: JSON.stringify({
           status,
           body,
@@ -476,7 +492,7 @@ export default function Home() {
   const handleDeleteEndpoint = async (id: string) => {
     if (!confirm('Are you sure you want to delete this endpoint? All captured requests will be lost.')) return;
     try {
-      await fetch(`/api/endpoints/${id}`, { method: 'DELETE' });
+      await fetch(`/api/endpoints/${id}`, { method: 'DELETE', headers: { 'x-user-id': userId } });
       setEndpoints(endpoints.filter(ep => ep.id !== id));
       if (selectedEndpoint?.id === id) {
         setSelectedEndpoint(null);
