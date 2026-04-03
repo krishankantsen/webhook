@@ -412,7 +412,14 @@ export default function Home() {
 
   const fetchRequests = async (endpointId: string) => {
     try {
-      const res = await fetch(`/api/endpoints/${endpointId}/requests`);
+      const res = await fetch(`/api/endpoints/${endpointId}/requests`, {
+        headers: { 'x-user-id': userId }
+      });
+      if (!res.ok) {
+        console.error('Failed to fetch requests:', await res.text());
+        setRequests([]);
+        return;
+      }
       const data = await res.json();
       setRequests(data);
     } catch (err) {

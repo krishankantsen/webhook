@@ -8,6 +8,16 @@ export async function GET(
   try {
     const sql = getSql();
     const { id } = params;
+    const userId = request.headers.get('x-user-id') || 'anonymous';
+
+    const endpointRows = await sql`SELECT owner FROM endpoints WHERE id = ${id}`;
+    if (endpointRows.length === 0) {
+      return NextResponse.json({ error: 'Endpoint not found' }, { status: 404 });
+    }
+
+    if (endpointRows[0].owner !== userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const rows = await sql`SELECT * FROM requests WHERE endpointid = ${id} ORDER BY timestamp DESC LIMIT 100`;
     const requests = rows.map((row: any) => {
