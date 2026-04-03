@@ -10,7 +10,7 @@ export async function GET() {
       ...row,
       responseHeaders: JSON.parse(row.responseheaders || '{}')
     }));
-    return NextResponse.json(endpoints);
+    return NextResponse.json(endpoints || []);
   } catch (error) {
     console.error('Error fetching endpoints:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

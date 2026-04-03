@@ -27,6 +27,16 @@ import { formatDistanceToNow, parseISO } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import { Endpoint, CapturedRequest } from '../lib/types';
 
+const safeParseISO = (dateString?: string | null) => {
+  if (!dateString) return null;
+  try {
+    const parsed = parseISO(dateString);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  } catch {
+    return null;
+  }
+};
+
 // --- Components ---
 
 const Navbar = () => (
@@ -58,7 +68,8 @@ const EndpointCard = ({
   onClick: () => void;
   onDelete: (e: React.MouseEvent) => void;
 }) => {
-  const isExpired = parseISO(endpoint.expiresAt) < new Date();
+  const expiresAtDate = safeParseISO(endpoint?.expiresAt);
+  const isExpired = expiresAtDate ? expiresAtDate < new Date() : false;
 
   return (
     <motion.div
@@ -95,7 +106,11 @@ const EndpointCard = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-gray-400">
           <Clock size={12} />
-          {isExpired ? 'Expired' : `Expires ${formatDistanceToNow(parseISO(endpoint.expiresAt), { addSuffix: true })}`}
+          {expiresAtDate
+            ? isExpired
+              ? 'Expired'
+              : `Expires ${formatDistanceToNow(expiresAtDate, { addSuffix: true })}`
+            : 'No expiration set'}
         </div>
         <div className="px-2 py-0.5 bg-gray-100 rounded text-[10px] font-bold text-gray-600">
           {endpoint.responseStatus}
@@ -615,7 +630,12 @@ export default function Home() {
                         <span>•</span>
                         <span className="flex items-center gap-1">
                           <Clock size={14} />
-                          Expires {formatDistanceToNow(parseISO(selectedEndpoint.expiresAt), { addSuffix: true })}
+                          {(() => {
+                            const maybeExpires = safeParseISO(selectedEndpoint.expiresAt);
+                            return maybeExpires
+                              ? `Expires ${formatDistanceToNow(maybeExpires, { addSuffix: true })}`
+                              : 'No expiration set';
+                          })()}
                         </span>
                       </div>
                     </div>
