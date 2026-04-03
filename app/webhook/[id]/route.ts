@@ -1,21 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { sql } from '@/lib/db';
-import { initDatabase } from '@/lib/db';
-
-// Initialize database on first request
-let dbInitialized = false;
-
-async function ensureDbInitialized() {
-  if (!dbInitialized) {
-    await initDatabase();
-    dbInitialized = true;
-  }
-}
+import { getSql } from '@/lib/db';
 
 async function handler(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    await ensureDbInitialized();
+    const sql = getSql();
     const { id } = params;
 
     const rows = await sql`SELECT * FROM endpoints WHERE id = ${id}`;

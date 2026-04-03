@@ -1,14 +1,22 @@
 import { neon } from "@neondatabase/serverless";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL environment variable is required. Please set it to your Neon database connection string.");
+// Lazy initialization of database connection
+let sqlInstance: any = null;
+
+export function getSql() {
+  if (!sqlInstance) {
+    if (!process.env.DATABASE_URL) {
+      throw new Error("DATABASE_URL environment variable is required. Please set it to your Neon database connection string.");
+    }
+    sqlInstance = neon(process.env.DATABASE_URL);
+  }
+  return sqlInstance;
 }
 
-export const sql = neon(process.env.DATABASE_URL);
-
-// Initialize database tables
+// Initialize database tables - only call this when needed
 export async function initDatabase() {
-  await sql(`
+  const db = getSql();
+  await db(`
     CREATE TABLE IF NOT EXISTS endpoints (
       id TEXT PRIMARY KEY,
       name TEXT,
@@ -20,7 +28,7 @@ export async function initDatabase() {
     );
   `);
 
-  await sql(`
+  await db(`
     CREATE TABLE IF NOT EXISTS requests (
       id TEXT PRIMARY KEY,
       endpointid TEXT,

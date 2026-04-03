@@ -1,21 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { sql } from '@/lib/db';
-import { initDatabase } from '@/lib/db';
-
-// Initialize database on first request
-let dbInitialized = false;
-
-async function ensureDbInitialized() {
-  if (!dbInitialized) {
-    await initDatabase();
-    dbInitialized = true;
-  }
-}
+import { getSql } from '@/lib/db';
 
 export async function GET() {
   try {
-    await ensureDbInitialized();
+    const sql = getSql();
     const rows = await sql`SELECT * FROM endpoints ORDER BY createdat DESC`;
     const endpoints = rows.map((row: any) => ({
       ...row,
@@ -30,7 +19,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    await ensureDbInitialized();
+    const sql = getSql();
     const { name, status, body, headers } = await request.json();
 
     const id = uuidv4().split('-')[0];

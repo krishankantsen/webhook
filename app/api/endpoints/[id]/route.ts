@@ -1,23 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@/lib/db';
-import { initDatabase } from '@/lib/db';
-
-// Initialize database on first request
-let dbInitialized = false;
-
-async function ensureDbInitialized() {
-  if (!dbInitialized) {
-    await initDatabase();
-    dbInitialized = true;
-  }
-}
+import { getSql } from '@/lib/db';
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    await ensureDbInitialized();
+    const sql = getSql();
     const { id } = params;
 
     const rows = await sql`SELECT * FROM endpoints WHERE id = ${id}`;
@@ -49,7 +38,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await ensureDbInitialized();
+    const sql = getSql();
     const { id } = params;
 
     await sql`DELETE FROM endpoints WHERE id = ${id}`;
