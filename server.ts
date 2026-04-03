@@ -7,37 +7,41 @@ import { v4 as uuidv4 } from "uuid";
 import { neon } from "@neondatabase/serverless";
 
 // Database Setup
-const sql = neon(process.env.DATABASE_URL!);
+if (!process.env.DATABASE_URL) {
+  console.error("DATABASE_URL environment variable is required. Please set it to your Neon database connection string.");
+  process.exit(1);
+}
+const sql = neon(process.env.DATABASE_URL);
 
-await sql`
+await sql(`
   CREATE TABLE IF NOT EXISTS endpoints (
     id TEXT PRIMARY KEY,
     name TEXT,
-    responseStatus INTEGER,
-    responseBody TEXT,
-    responseHeaders TEXT,
-    createdAt TEXT,
-    expiresAt TEXT
+    responsestatus INTEGER,
+    responsebody TEXT,
+    responseheaders TEXT,
+    createdat TEXT,
+    expiresat TEXT
   );
-`;
+`);
 
-await sql`
+await sql(`
   CREATE TABLE IF NOT EXISTS requests (
     id TEXT PRIMARY KEY,
-    endpointId TEXT,
+    endpointid TEXT,
     method TEXT,
     headers TEXT,
     body TEXT,
     query TEXT,
     timestamp TEXT,
     ip TEXT,
-    FOREIGN KEY(endpointId) REFERENCES endpoints(id) ON DELETE CASCADE
+    FOREIGN KEY(endpointid) REFERENCES endpoints(id) ON DELETE CASCADE
   );
-`;
+`);
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
 
   app.use(cors());
   app.use(express.json()); // For regular API calls
@@ -46,7 +50,7 @@ async function startServer() {
 
   // API Endpoints for Frontend
   app.get("/api/endpoints", async (req, res) => {
-    const { rows } = await sql`SELECT * FROM endpoints ORDER BY createdAt DESC`;
+    const { rows } = await sql`SELECT * FROM endpoints ORDER BY createdat DESC`;
     const endpoints = rows.map((row: any) => ({
       ...row,
       responseHeaders: JSON.parse(row.responseheaders || '{}')
@@ -70,10 +74,7 @@ async function startServer() {
       expiresAt: expiresAt.toISOString()
     };
 
-    await sql`
-      INSERT INTO endpoints (id, name, responsestatus, responsebody, responseheaders, createdat, expiresat)
-      VALUES (${newEndpoint.id}, ${newEndpoint.name}, ${newEndpoint.responseStatus}, ${newEndpoint.responseBody}, ${newEndpoint.responseHeaders}, ${newEndpoint.createdAt}, ${newEndpoint.expiresAt})
-    `;
+    await sql`INSERT INTO endpoints (id, name, responsestatus, responsebody, responseheaders, createdat, expiresat) VALUES (${newEndpoint.id}, ${newEndpoint.name}, ${newEndpoint.responseStatus}, ${newEndpoint.responseBody}, ${newEndpoint.responseHeaders}, ${newEndpoint.createdAt}, ${newEndpoint.expiresAt})`;
 
     res.status(201).json({
       ...newEndpoint,
@@ -95,11 +96,7 @@ async function startServer() {
     if (body !== undefined) endpoint.responsebody = body;
     if (headers !== undefined) endpoint.responseheaders = JSON.stringify(headers);
 
-    await sql`
-      UPDATE endpoints 
-      SET responsestatus = ${endpoint.responsestatus}, responsebody = ${endpoint.responsebody}, responseheaders = ${endpoint.responseheaders}
-      WHERE id = ${id}
-    `;
+    await sql`UPDATE endpoints SET responsestatus = ${endpoint.responsestatus}, responsebody = ${endpoint.responsebody}, responseheaders = ${endpoint.responseheaders} WHERE id = ${id}`;
 
     res.json({
       ...endpoint,
@@ -153,17 +150,10 @@ async function startServer() {
       ip: req.ip || (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '',
     };
     
-    await sql`
-      INSERT INTO requests (id, endpointid, method, headers, body, query, timestamp, ip)
-      VALUES (${capturedRequest.id}, ${capturedRequest.endpointId}, ${capturedRequest.method}, ${capturedRequest.headers}, ${capturedRequest.body}, ${capturedRequest.query}, ${capturedRequest.timestamp}, ${capturedRequest.ip})
-    `;
+    await sql`INSERT INTO requests (id, endpointid, method, headers, body, query, timestamp, ip) VALUES (${capturedRequest.id}, ${capturedRequest.endpointId}, ${capturedRequest.method}, ${capturedRequest.headers}, ${capturedRequest.body}, ${capturedRequest.query}, ${capturedRequest.timestamp}, ${capturedRequest.ip})`;
 
     // Keep requests limit to 100 per endpoint
-    await sql`
-      DELETE FROM requests WHERE id IN (
-        SELECT id FROM requests WHERE endpointid = ${id} ORDER BY timestamp DESC OFFSET 100
-      )
-    `;
+    await sql`DELETE FROM requests WHERE id IN (SELECT id FROM requests WHERE endpointid = ${id} ORDER BY timestamp DESC OFFSET 100)`;
 
     // Send custom response
     const headers = JSON.parse(endpoint.responseheaders || '{}');
@@ -178,17 +168,6 @@ async function startServer() {
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
-
-async function startServer() {
-  const app = express();
-  const PORT = process.env.PORT || 3000;
-
-  app.use(cors());
-  app.use(express.json()); // For regular API calls
-  app.use(bodyParser.text({ type: "text/*" })); 
-  app.use(bodyParser.urlencoded({ extended: true }));
-
-  // ... existing code ...
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
@@ -208,15 +187,15 @@ async function startServer() {
   return app;
 }
 
+const app = await startServer();
+
 if (process.env.VERCEL) {
-  // For Vercel, export the app
-  export default startServer();
+  // For Vercel, the app is exported
 } else {
   // For local development
-  startServer().then(app => {
-    const PORT = 3000;
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
+  app.listen(3000, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:3000`);
   });
 }
+
+export default app;
