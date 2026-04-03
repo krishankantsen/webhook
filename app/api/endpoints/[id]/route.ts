@@ -20,7 +20,7 @@ export async function PATCH(
     await ensureDbInitialized();
     const { id } = params;
 
-    const { rows } = await sql`SELECT * FROM endpoints WHERE id = ${id}`;
+    const rows = await sql`SELECT * FROM endpoints WHERE id = ${id}`;
     if (rows.length === 0) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }

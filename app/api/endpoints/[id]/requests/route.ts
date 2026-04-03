@@ -20,7 +20,7 @@ export async function GET(
     await ensureDbInitialized();
     const { id } = params;
 
-    const { rows } = await sql`SELECT * FROM requests WHERE endpointid = ${id} ORDER BY timestamp DESC LIMIT 100`;
+    const rows = await sql`SELECT * FROM requests WHERE endpointid = ${id} ORDER BY timestamp DESC LIMIT 100`;
     const requests = rows.map((row: any) => ({
       ...row,
       headers: JSON.parse(row.headers || '{}'),

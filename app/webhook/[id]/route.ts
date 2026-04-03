@@ -18,7 +18,7 @@ async function handler(request: NextRequest, { params }: { params: { id: string 
     await ensureDbInitialized();
     const { id } = params;
 
-    const { rows } = await sql`SELECT * FROM endpoints WHERE id = ${id}`;
+    const rows = await sql`SELECT * FROM endpoints WHERE id = ${id}`;
 
     if (rows.length === 0) {
       return new NextResponse("Webhook endpoint not found.", { status: 404 });

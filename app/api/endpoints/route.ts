@@ -16,7 +16,7 @@ async function ensureDbInitialized() {
 export async function GET() {
   try {
     await ensureDbInitialized();
-    const { rows } = await sql`SELECT * FROM endpoints ORDER BY createdat DESC`;
+    const rows = await sql`SELECT * FROM endpoints ORDER BY createdat DESC`;
     const endpoints = rows.map((row: any) => ({
       ...row,
       responseHeaders: JSON.parse(row.responseheaders || '{}')
