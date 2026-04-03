@@ -1,7 +1,5 @@
-
 export interface Endpoint {
   id: string;
-  userId: string;
   name?: string;
   responseStatus: number;
   responseBody: string;

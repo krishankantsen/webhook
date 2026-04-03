@@ -1,13 +1,15 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  ExternalLink, 
-  Copy, 
-  Clock, 
-  Settings, 
-  ChevronRight, 
-  ChevronDown, 
+import {
+  Plus,
+  Trash2,
+  ExternalLink,
+  Copy,
+  Clock,
+  Settings,
+  ChevronRight,
+  ChevronDown,
   RefreshCw,
   LogOut,
   Webhook,
@@ -23,7 +25,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
-import { Endpoint, CapturedRequest } from './types';
+import { Endpoint, CapturedRequest } from '../lib/types';
 
 // --- Components ---
 
@@ -37,27 +39,27 @@ const Navbar = () => (
     </div>
     <div className="hidden md:flex items-center gap-4">
       <span className="text-sm font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-        Local Storage Mode
+        Database Mode
       </span>
     </div>
   </nav>
 );
 
-const EndpointCard = ({ 
+const EndpointCard = ({
   key,
-  endpoint, 
-  isSelected, 
-  onClick, 
-  onDelete 
-}: { 
+  endpoint,
+  isSelected,
+  onClick,
+  onDelete
+}: {
   key:string
-  endpoint: Endpoint; 
-  isSelected: boolean; 
+  endpoint: Endpoint;
+  isSelected: boolean;
   onClick: () => void;
   onDelete: (e: React.MouseEvent) => void;
 }) => {
   const isExpired = parseISO(endpoint.expiresAt) < new Date();
-  
+
   return (
     <motion.div
       layout
@@ -65,8 +67,8 @@ const EndpointCard = ({
       animate={{ opacity: 1, y: 0 }}
       onClick={onClick}
       className={`group relative p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-        isSelected 
-          ? 'border-indigo-600 bg-indigo-50/30' 
+        isSelected
+          ? 'border-indigo-600 bg-indigo-50/30'
           : 'border-gray-100 hover:border-indigo-200 hover:bg-gray-50/50'
       }`}
     >
@@ -77,14 +79,14 @@ const EndpointCard = ({
             {endpoint.name || 'Unnamed Endpoint'}
           </span>
         </div>
-        <button 
+        <button
           onClick={onDelete}
           className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
         >
           <Trash2 size={16} />
         </button>
       </div>
-      
+
       <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
         <Code size={14} />
         <span className="font-mono truncate">{endpoint.id}</span>
@@ -105,10 +107,10 @@ const EndpointCard = ({
 
 const RequestItem = ({ key, request }: { key:string, request: CapturedRequest }) => {
   const [isOpen, setIsOpen] = useState(false);
-  
+
   return (
     <div className="border-b border-gray-100 last:border-0">
-      <div 
+      <div
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer transition-colors"
       >
@@ -133,7 +135,7 @@ const RequestItem = ({ key, request }: { key:string, request: CapturedRequest })
           {isOpen ? <ChevronDown size={18} className="text-gray-400" /> : <ChevronRight size={18} className="text-gray-400" />}
         </div>
       </div>
-      
+
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -154,7 +156,7 @@ const RequestItem = ({ key, request }: { key:string, request: CapturedRequest })
                   ))}
                 </div>
               </div>
-              
+
               {request.body && (
                 <div>
                   <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Body</h4>
@@ -346,7 +348,7 @@ const EditResponsePanel = ({
   );
 };
 
-export default function App() {
+export default function Home() {
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(null);
   const [requests, setRequests] = useState<CapturedRequest[]>([]);
@@ -495,14 +497,14 @@ export default function App() {
           <div className="lg:col-span-3 flex flex-col gap-4 overflow-hidden">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400">Your Endpoints</h2>
-              <button 
+              <button
                 onClick={() => setIsCreating(true)}
                 className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
               >
                 <Plus size={18} />
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
               {endpoints.length === 0 ? (
                 <div className="p-8 text-center border-2 border-dashed border-gray-200 rounded-3xl">
@@ -510,9 +512,9 @@ export default function App() {
                 </div>
               ) : (
                 endpoints.map(ep => (
-                  <EndpointCard 
-                    key={ep.id} 
-                    endpoint={ep} 
+                  <EndpointCard
+                    key={ep.id}
+                    endpoint={ep}
                     isSelected={selectedEndpoint?.id === ep.id}
                     onClick={() => {
                       setSelectedEndpoint(ep);
@@ -537,20 +539,20 @@ export default function App() {
                 <form onSubmit={handleCreateEndpoint} className="space-y-6">
                   <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Friendly Name</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={formData.name}
                       onChange={e => setFormData({...formData, name: e.target.value})}
                       placeholder="e.g. Stripe Webhook Test"
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                     />
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Response Status</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={formData.status}
                         onChange={e => setFormData({...formData, status: parseInt(e.target.value)})}
                         className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -566,7 +568,7 @@ export default function App() {
 
                   <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Response Headers (JSON)</label>
-                    <textarea 
+                    <textarea
                       value={formData.headers}
                       onChange={e => setFormData({...formData, headers: e.target.value})}
                       rows={3}
@@ -576,7 +578,7 @@ export default function App() {
 
                   <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Response Body</label>
-                    <textarea 
+                    <textarea
                       value={formData.body}
                       onChange={e => setFormData({...formData, body: e.target.value})}
                       rows={5}
@@ -585,14 +587,14 @@ export default function App() {
                   </div>
 
                   <div className="flex gap-3 pt-4">
-                    <button 
+                    <button
                       type="submit"
                       className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
                     >
                       Create Endpoint
                     </button>
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setIsCreating(false)}
                       className="px-8 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-all"
                     >
@@ -634,7 +636,7 @@ export default function App() {
                       <div className="flex-1 md:flex-none bg-white border border-gray-200 rounded-xl px-4 py-2 flex items-center gap-3">
                         <Globe size={16} className="text-indigo-600" />
                         <span className="text-sm font-mono text-gray-600 truncate max-w-[200px] md:max-w-md">{webhookUrl}</span>
-                        <button 
+                        <button
                           onClick={() => copyToClipboard(webhookUrl)}
                           className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-400 hover:text-indigo-600"
                         >
@@ -684,7 +686,7 @@ export default function App() {
                       Listening for requests...
                     </div>
                   </div>
-                  
+
                   <div className="flex-1 overflow-y-auto custom-scrollbar">
                     {requests.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full text-center p-12">
@@ -699,7 +701,7 @@ export default function App() {
                           <p className="text-xs font-bold text-indigo-700 mb-2 uppercase tracking-widest flex items-center gap-2 justify-between">
                             <span>Try it now:</span>
                             <button
-                              type="button" 
+                              type="button"
                               onClick={() => copyToClipboard(`curl -X POST ${webhookUrl} -d '{"hello": "world"}'`)}
                               className="px-2 py-1 text-[10px] bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
                             >
@@ -729,7 +731,7 @@ export default function App() {
                 <p className="text-gray-500 max-w-md mx-auto mb-8">
                   Choose an existing endpoint from the sidebar or create a new one to start capturing webhooks.
                 </p>
-                <button 
+                <button
                   onClick={() => setIsCreating(true)}
                   className="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center gap-2"
                 >
