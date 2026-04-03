@@ -29,8 +29,14 @@ export async function PATCH(
     await sql`UPDATE endpoints SET responsestatus = ${endpoint.responsestatus}, responsebody = ${endpoint.responsebody}, responseheaders = ${endpoint.responseheaders} WHERE id = ${id}`;
 
     return NextResponse.json({
-      ...endpoint,
-      responseHeaders: JSON.parse(endpoint.responseheaders)
+      id: endpoint.id,
+      name: endpoint.name,
+      responseStatus: endpoint.responsestatus,
+      responseBody: endpoint.responsebody,
+      responseHeaders: JSON.parse(endpoint.responseheaders || '{}'),
+      createdAt: endpoint.createdat,
+      expiresAt: endpoint.expiresat,
+      owner: endpoint.owner
     });
   } catch (error) {
     console.error('Error updating endpoint:', error);

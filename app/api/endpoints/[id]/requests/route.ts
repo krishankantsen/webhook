@@ -10,11 +10,31 @@ export async function GET(
     const { id } = params;
 
     const rows = await sql`SELECT * FROM requests WHERE endpointid = ${id} ORDER BY timestamp DESC LIMIT 100`;
-    const requests = rows.map((row: any) => ({
-      ...row,
-      headers: JSON.parse(row.headers || '{}'),
-      query: JSON.parse(row.query || '{}')
-    }));
+    const requests = rows.map((row: any) => {
+      let headers = {};
+      let query = {};
+      try {
+        headers = JSON.parse(row.headers || '{}');
+      } catch {
+        headers = {};
+      }
+      try {
+        query = JSON.parse(row.query || '{}');
+      } catch {
+        query = {};
+      }
+
+      return {
+        id: row.id,
+        endpointId: row.endpointid,
+        method: row.method,
+        headers,
+        body: row.body,
+        query,
+        timestamp: row.timestamp,
+        ip: row.ip
+      };
+    });
 
     return NextResponse.json(requests);
   } catch (error) {
